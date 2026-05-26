@@ -107,27 +107,24 @@ export function createClaudeCodeHookBridge(configs: ClaudeCodeHookConfig[], cwd:
 
 	return (api: ExtensionAPI) => {
 		// ── PreToolUse (tool_execution_start, observer-only) ──
-		if (CC_TO_OMP_EVENT.PreToolUse) {
-			api.on("tool_execution_start", async (event) => {
-				const raw = event as unknown as Record<string, unknown>;
-				const toolName = String(raw.toolName ?? "");
-				void runMatchingHooks(configs, "PreToolUse", toolName, undefined, cwd);
-			});
-		}
+		api.on("tool_execution_start", async (event) => {
+			const raw = event as unknown as Record<string, unknown>;
+			const toolName = String(raw.toolName ?? "");
+			logger.debug("Claude Code hooks: tool_execution_start", { toolName });
+			void runMatchingHooks(configs, "PreToolUse", toolName, undefined, cwd);
+		});
 
 		// ── PostToolUse / PostToolUseFailure (tool_execution_end) ──
-		if (CC_TO_OMP_EVENT.PostToolUse) {
-			api.on("tool_execution_end", async () => {
-				void runMatchingHooks(configs, "PostToolUse", undefined, undefined, cwd);
-			});
-		}
+		api.on("tool_execution_end", async (event) => {
+			const raw = event as unknown as Record<string, unknown>;
+			logger.debug("Claude Code hooks: tool_execution_end", { toolName: String(raw.toolName ?? "") });
+			void runMatchingHooks(configs, "PostToolUse", undefined, undefined, cwd);
+		});
 
 		// ── SessionStart ──
-		if (CC_TO_OMP_EVENT.SessionStart) {
-			api.on("session_start", async () => {
-				void runMatchingHooks(configs, "SessionStart", undefined, undefined, cwd);
-			});
-		}
+		api.on("session_start", async () => {
+			void runMatchingHooks(configs, "SessionStart", undefined, undefined, cwd);
+		});
 
 		// ── UserPromptSubmit ──
 		if (CC_TO_OMP_EVENT.UserPromptSubmit) {
