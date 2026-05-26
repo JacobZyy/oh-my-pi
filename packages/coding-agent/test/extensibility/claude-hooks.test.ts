@@ -98,8 +98,8 @@ describe("parseHooksConfig", () => {
 		expect(configs[0].event).toBe("PreToolUse");
 		expect(configs[0].matcher).toBe("Bash");
 		expect(configs[0].handler.type).toBe("command");
-		expect(configs[0].handler.command).toBe("check.sh");
-		expect(configs[0].handler.args).toEqual(["--verbose"]);
+		expect((configs[0].handler as { type: "command"; command: string }).command).toBe("check.sh");
+		expect((configs[0].handler as { type: "command"; args?: string[] }).args).toEqual(["--verbose"]);
 		expect(configs[0].level).toBe("user");
 		expect(configs[0].sourcePath).toBe("test.json");
 	});
@@ -152,6 +152,6 @@ describe("parseHooksFromJson", () => {
 		});
 		const configs = parseHooksFromJson(json, "test.json", "user");
 		expect(configs).toHaveLength(1);
-		expect(configs[0].handler.command).toBe("test.sh");
+		expect((configs[0].handler as { type: "command"; command: string }).command).toBe("test.sh");
 	});
 });

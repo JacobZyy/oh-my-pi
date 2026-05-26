@@ -33,14 +33,25 @@ import { listClaudePluginRoots } from "../../discovery/helpers";
 
 /**
  * Discover Claude Code hook configs from plugin hooks.json files.
- * Each Claude Code marketplace/plugin directory may contain a
- * hooks/hooks.json with the same schema as settings.json hooks.
+ * When multiple versions of the same plugin exist, only the highest
+ * version is collected.
  */
 export async function discoverPluginHookConfigs(home: string): Promise<ClaudeCodeHookConfig[]> {
 	const configs: ClaudeCodeHookConfig[] = [];
 	try {
 		const { roots } = await listClaudePluginRoots(home);
+
+		// Deduplicate: keep only the highest version per (marketplace, plugin)
+		const bestVersion = new Map<string, { version: string; root: typeof roots[0] }>();
 		for (const root of roots) {
+			const key = `${root.marketplace}/${root.plugin}`;
+			const existing = bestVersion.get(key);
+			if (!existing || Bun.semver.order(root.version, existing.version) > 0) {
+				bestVersion.set(key, { version: root.version, root });
+			}
+		}
+
+		for (const { root } of bestVersion.values()) {
 			const hooksPath = path.join(root.path, "hooks", "hooks.json");
 			try {
 				if (fs.existsSync(hooksPath)) {
@@ -50,6 +61,7 @@ export async function discoverPluginHookConfigs(home: string): Promise<ClaudeCod
 						configs.push(...parsed);
 						logger.debug("Claude Code hooks: loaded from plugin", {
 							plugin: root.id,
+							version: root.version,
 							hookCount: parsed.length,
 						});
 					}
