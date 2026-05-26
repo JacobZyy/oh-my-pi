@@ -51,6 +51,23 @@ function matchesIf(condition: string | undefined, toolName: string, inputStr: st
 	}
 }
 
+/**
+ * Replace ${CLAUDE_PLUGIN_ROOT} in a command hook using the plugin root
+ * derived from the hook config's sourcePath (<plugin>/hooks/hooks.json).
+ */
+function resolveClaudePluginRoot(
+	handler: { type: "command"; command: string; args?: string[] },
+	sourcePath: string,
+): { type: "command"; command: string; args?: string[] } {
+	const hooksJsonIndex = sourcePath.lastIndexOf("/hooks/hooks.json");
+	if (hooksJsonIndex === -1) return handler;
+	const pluginRoot = sourcePath.slice(0, hooksJsonIndex);
+	return {
+		...handler,
+		command: handler.command.replace(/\$\{CLAUDE_PLUGIN_ROOT\}/g, pluginRoot),
+	};
+}
+
 interface HookRunResult {
 	denied: boolean;
 	reason?: string;
@@ -71,7 +88,9 @@ async function runMatchingHooks(
 		const hookInput = buildHookInput(ccEvent, { tool_name: toolName });
 
 		if (config.handler.type === "command") {
-			const result = await executeCommandHook(config.handler, hookInput, cwd);
+			const resolved = resolveClaudePluginRoot(config.handler, config.sourcePath);
+			const result = await executeCommandHook(resolved, hookInput, cwd);
+
 			if (result.decision?.hookSpecificOutput.permissionDecision === "deny") {
 				return {
 					denied: true,
