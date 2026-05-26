@@ -24,7 +24,8 @@ import { executeCommandHook } from "./executor";
 function matchesTool(matcher: string, toolName: string): boolean {
 	if (!matcher || matcher === "*") return true;
 	if (/^[\w|]+$/.test(matcher)) {
-		return matcher.split("|").includes(toolName);
+		const lower = toolName.toLowerCase();
+		return matcher.toLowerCase().split("|").some(p => p === lower);
 	}
 	try {
 		return new RegExp(matcher).test(toolName);
