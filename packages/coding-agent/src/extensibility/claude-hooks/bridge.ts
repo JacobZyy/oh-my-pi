@@ -74,12 +74,10 @@ async function runMatchingHooks(
 	inputStr: string | undefined,
 	cwd: string,
 ): Promise<HookRunResult> {
-	logger.debug("Claude Code hooks: searching configs", { ccEvent, toolName, configCount: configs.length });
 	for (const config of configs) {
 		if (config.event !== ccEvent) continue;
 		if (toolName && !matchesTool(config.matcher, toolName)) continue;
 		if (config.handler.type === "command" && !matchesIf(config.handler.if, toolName ?? "", inputStr ?? "")) continue;
-		logger.debug("Claude Code hooks: matched hook", { event: ccEvent, command: (config.handler as { command: string }).command });
 
 		const hookInput = buildHookInput(ccEvent, { tool_name: toolName });
 
@@ -87,14 +85,30 @@ async function runMatchingHooks(
 			const pluginRoot = getClaudePluginRoot(config.sourcePath);
 			const result = await executeCommandHook(config.handler, hookInput, cwd, pluginRoot);
 
-		if (result.decision?.hookSpecificOutput.permissionDecision === "deny") {
-			return {
-				denied: true,
-				reason: result.decision.hookSpecificOutput.permissionDecisionReason
-					?? `blocked by hook: ${config.handler.command}`,
-			};
+			// Surface hook output to the user (matches Claude Code behavior)
+			if (result.stdout.trim()) {
+				logger.info("Claude Code hook stdout", {
+					event: ccEvent,
+					command: (config.handler as { command: string }).command,
+					stdout: result.stdout.trim(),
+				});
+			}
+			if (result.stderr.trim()) {
+				logger.warn("Claude Code hook stderr", {
+					event: ccEvent,
+					command: (config.handler as { command: string }).command,
+					stderr: result.stderr.trim(),
+				});
+			}
+
+			if (result.decision?.hookSpecificOutput.permissionDecision === "deny") {
+				return {
+					denied: true,
+					reason: result.decision.hookSpecificOutput.permissionDecisionReason
+						?? `blocked by hook: ${config.handler.command}`,
+				};
+			}
 		}
-	}
 	}
 	return { denied: false };
 }
