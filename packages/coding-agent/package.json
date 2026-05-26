@@ -302,6 +302,14 @@
 			"types": "./src/extensibility/hooks/*.ts",
 			"import": "./src/extensibility/hooks/*.ts"
 		},
+		"./extensibility/claude-hooks": {
+			"types": "./src/extensibility/claude-hooks/index.ts",
+			"import": "./src/extensibility/claude-hooks/index.ts"
+		},
+		"./extensibility/claude-hooks/*": {
+			"types": "./src/extensibility/claude-hooks/*.ts",
+			"import": "./src/extensibility/claude-hooks/*.ts"
+		},
 		"./extensibility/plugins": {
 			"types": "./src/extensibility/plugins/index.ts",
 			"import": "./src/extensibility/plugins/index.ts"
