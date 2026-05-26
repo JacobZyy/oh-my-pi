@@ -106,22 +106,18 @@ export function createClaudeCodeHookBridge(configs: ClaudeCodeHookConfig[], cwd:
 	}
 
 	return (api: ExtensionAPI) => {
-		// ── PreToolUse ──
+		// ── PreToolUse (tool_execution_start, observer-only) ──
 		if (CC_TO_OMP_EVENT.PreToolUse) {
-			api.on("tool_call", async (event) => {
+			api.on("tool_execution_start", async (event) => {
 				const raw = event as unknown as Record<string, unknown>;
-				const inputStr = JSON.stringify(raw.input ?? {});
 				const toolName = String(raw.toolName ?? "");
-				const result = await runMatchingHooks(configs, "PreToolUse", toolName, inputStr, cwd);
-				if (result.denied) {
-					return { block: true, reason: result.reason ?? "blocked by Claude Code hook" };
-				}
+				void runMatchingHooks(configs, "PreToolUse", toolName, undefined, cwd);
 			});
 		}
 
-		// ── PostToolUse / PostToolUseFailure ──
+		// ── PostToolUse / PostToolUseFailure (tool_execution_end) ──
 		if (CC_TO_OMP_EVENT.PostToolUse) {
-			api.on("tool_result", async () => {
+			api.on("tool_execution_end", async () => {
 				void runMatchingHooks(configs, "PostToolUse", undefined, undefined, cwd);
 			});
 		}

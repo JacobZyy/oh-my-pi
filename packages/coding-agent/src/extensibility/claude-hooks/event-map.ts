@@ -18,9 +18,9 @@ import type { ClaudeCodeHookEventName } from "./types";
 export const CC_TO_OMP_EVENT: Partial<Record<ClaudeCodeHookEventName, string>> = {
 	SessionStart: "session_start",
 	UserPromptSubmit: "before_agent_start",
-	PreToolUse: "tool_call",
-	PostToolUse: "tool_result",
-	PostToolUseFailure: "tool_result",
+	PreToolUse: "tool_execution_start",
+	PostToolUse: "tool_execution_end",
+	PostToolUseFailure: "tool_execution_end",
 	SubagentStart: "agent_start",
 	SubagentStop: "agent_end",
 	Stop: "turn_end",

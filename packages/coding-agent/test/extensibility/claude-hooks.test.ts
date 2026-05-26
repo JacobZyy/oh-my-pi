@@ -8,8 +8,8 @@ import { CC_TO_OMP_EVENT, UNMAPPED_EVENTS, isMapped, isUnmapped } from "@oh-my-p
 describe("event-map", () => {
 	it("maps all known mapped events to omp events", () => {
 		expect(CC_TO_OMP_EVENT.SessionStart).toBe("session_start");
-		expect(CC_TO_OMP_EVENT.PreToolUse).toBe("tool_call");
-		expect(CC_TO_OMP_EVENT.PostToolUse).toBe("tool_result");
+		expect(CC_TO_OMP_EVENT.PreToolUse).toBe("tool_execution_start");
+		expect(CC_TO_OMP_EVENT.PostToolUse).toBe("tool_execution_end");
 		expect(CC_TO_OMP_EVENT.SubagentStart).toBe("agent_start");
 		expect(CC_TO_OMP_EVENT.SubagentStop).toBe("agent_end");
 		expect(CC_TO_OMP_EVENT.Stop).toBe("turn_end");
@@ -17,7 +17,7 @@ describe("event-map", () => {
 		expect(CC_TO_OMP_EVENT.PostCompact).toBe("auto_compaction_end");
 		expect(CC_TO_OMP_EVENT.SessionEnd).toBe("session_shutdown");
 		expect(CC_TO_OMP_EVENT.UserPromptSubmit).toBe("before_agent_start");
-		expect(CC_TO_OMP_EVENT.PostToolUseFailure).toBe("tool_result");
+		expect(CC_TO_OMP_EVENT.PostToolUseFailure).toBe("tool_execution_end");
 		expect(CC_TO_OMP_EVENT.StopFailure).toBe("turn_end");
 	});
 
@@ -155,3 +155,4 @@ describe("parseHooksFromJson", () => {
 		expect((configs[0].handler as { type: "command"; command: string }).command).toBe("test.sh");
 });
 });
+// test
