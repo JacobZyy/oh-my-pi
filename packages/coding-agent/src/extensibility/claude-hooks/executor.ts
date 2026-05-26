@@ -2,10 +2,14 @@
  * Claude Code Hook Executor
  *
  * Runs command hooks using Claude Code's stdin/stdout JSON protocol.
+ * Commands are executed through a shell (sh -c) so that ${CLAUDE_PLUGIN_ROOT}
+ * and other environment variable references are expanded by the shell, matching
+ * Claude Code's behavior exactly.
+ *
  * HTTP hooks are not yet implemented.
  */
 
-import { logger, ptree } from "@oh-my-pi/pi-utils";
+import { logger } from "@oh-my-pi/pi-utils";
 import type { ClaudeCodeCommandHook, ClaudeCodeHookDecision, ClaudeCodeHookInput } from "./types";
 
 /**
@@ -62,10 +66,12 @@ export interface ClaudeCodeHookResult {
 }
 
 /**
- * Execute a Claude Code command hook.
+ * Execute a Claude Code command hook via a shell (sh -c).
  *
- * Writes `input` as JSON to the process stdin, captures stdout/stderr,
- * and parses any hook decision from the output.
+ * Sets CLAUDE_PLUGIN_ROOT as an environment variable so the shell can
+ * expand ${CLAUDE_PLUGIN_ROOT} in the command, matching Claude Code's
+ * behavior. The hook command string (including args) is passed as the
+ * argument to sh -c.
  *
  * Exit code conventions (per Claude Code spec):
  *   - 0: success, stdout may contain a JSON decision
@@ -76,29 +82,79 @@ export async function executeCommandHook(
 	hook: ClaudeCodeCommandHook,
 	input: ClaudeCodeHookInput,
 	cwd: string,
+	claudePluginRoot: string | undefined,
 	signal?: AbortSignal,
 ): Promise<ClaudeCodeHookResult> {
 	const args = hook.args ?? [];
 	const timeoutMs = parseDurationMs(hook.timeout) || 60_000;
 
-	try {
-		const result = await ptree.exec(
-			[hook.command, ...args],
-			{
-				cwd,
-				signal,
-				timeout: timeoutMs,
-				input: JSON.stringify(input),
-				allowNonZero: true,
-				allowAbort: true,
-			},
-		);
+	// Build the full command string (shell will handle expansion)
+	const commandStr = args.length > 0
+		? `${hook.command} ${args.join(" ")}`
+		: hook.command;
 
-		if (result.exitCode === 2) {
+	// Set CLAUDE_PLUGIN_ROOT in env so ${CLAUDE_PLUGIN_ROOT} is expanded by the shell
+	const env: Record<string, string> = { ...(process.env as Record<string, string>) };
+	if (claudePluginRoot) {
+		env.CLAUDE_PLUGIN_ROOT = claudePluginRoot;
+	}
+
+	try {
+		// Use Bun.spawn directly for shell + env support, then manually
+		// handle stdin writing and output collection
+		const proc = Bun.spawn({
+			cmd: ["sh", "-c", commandStr],
+			cwd,
+			env,
+			stdin: "pipe",
+			stdout: "pipe",
+			stderr: "pipe",
+			windowsHide: true,
+		});
+
+		// Write JSON input to stdin and close
+		const stdin = proc.stdin;
+		if (stdin) {
+			stdin.write(new TextEncoder().encode(JSON.stringify(input)));
+			stdin.end();
+		}
+
+		// Set up timeout and abort handling
+		let killed = false;
+		let timeoutId: ReturnType<typeof setTimeout> | undefined;
+		const kill = () => {
+			if (!killed) {
+				killed = true;
+				proc.kill();
+			}
+		};
+
+		if (timeoutMs > 0) {
+			timeoutId = setTimeout(kill, timeoutMs);
+		}
+
+		if (signal) {
+			if (signal.aborted) {
+				kill();
+			} else {
+				signal.addEventListener("abort", kill, { once: true });
+			}
+		}
+
+		// Wait for process to exit
+		const exitCode = await proc.exited;
+
+		if (timeoutId) clearTimeout(timeoutId);
+		if (signal) signal.removeEventListener("abort", kill);
+
+		const stdout = await new Response(proc.stdout).text();
+		const stderr = await new Response(proc.stderr).text();
+
+		if (exitCode === 2) {
 			return {
-				exitCode: result.exitCode,
-				stdout: result.stdout,
-				stderr: result.stderr,
+				exitCode,
+				stdout,
+				stderr,
 				decision: {
 					hookSpecificOutput: {
 						hookEventName: input.hook_event_name,
@@ -109,13 +165,8 @@ export async function executeCommandHook(
 			};
 		}
 
-		const decision = parseDecision(result.stdout);
-		return {
-			exitCode: result.exitCode ?? 0,
-			stdout: result.stdout,
-			stderr: result.stderr,
-			decision,
-		};
+		const decision = parseDecision(stdout);
+		return { exitCode, stdout, stderr, decision };
 	} catch (error) {
 		logger.warn("Claude Code hook execution failed", {
 			command: hook.command,

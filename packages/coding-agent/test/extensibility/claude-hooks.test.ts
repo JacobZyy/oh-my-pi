@@ -153,5 +153,5 @@ describe("parseHooksFromJson", () => {
 		const configs = parseHooksFromJson(json, "test.json", "user");
 		expect(configs).toHaveLength(1);
 		expect((configs[0].handler as { type: "command"; command: string }).command).toBe("test.sh");
-	});
+});
 });
