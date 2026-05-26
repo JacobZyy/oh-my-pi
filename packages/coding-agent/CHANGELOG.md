@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Added Claude Code hook bridge: omp discovers and executes Claude Code command hooks from `.claude/settings.json` and plugin `hooks.json`. 12 mapped events, 17 unmapped events documented in `docs/claude-code-hook-mapping.md`.
+
 ### Fixed
 
 - Fixed clipboard image paste (Ctrl+V) silently failing on WSL2 by routing image reads through a `powershell.exe` bridge when WSL interop is detected, since `arboard` returns `ContentNotAvailable` under WSLg ([#1280](https://github.com/can1357/oh-my-pi/issues/1280))

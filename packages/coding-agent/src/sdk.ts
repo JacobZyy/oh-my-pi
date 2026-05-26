@@ -113,6 +113,8 @@ import {
 } from "./system-prompt";
 import { AgentOutputManager } from "./task/output-manager";
 import { parseThinkingLevel, resolveThinkingLevelForModel, toReasoningEffort } from "./thinking";
+import * as os from "node:os";
+import { createClaudeHookFactory } from "./extensibility/claude-hooks";
 import {
 	collectDiscoverableTools,
 	type DiscoverableTool,
@@ -1322,6 +1324,11 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 		inlineExtensions.push(createAutoresearchExtension);
 		if (customTools.length > 0) {
 			inlineExtensions.push(createCustomToolsExtension(customTools));
+		}
+		// Load Claude Code hooks from settings.json as an inline extension
+		const claudeHookFactory = createClaudeHookFactory(cwd, os.homedir());
+		if (claudeHookFactory) {
+			inlineExtensions.push(claudeHookFactory);
 		}
 
 		// Load extensions (discovers from standard locations + configured paths)
