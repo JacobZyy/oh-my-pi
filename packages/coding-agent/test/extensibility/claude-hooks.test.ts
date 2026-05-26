@@ -155,4 +155,4 @@ describe("parseHooksFromJson", () => {
 		expect((configs[0].handler as { type: "command"; command: string }).command).toBe("test.sh");
 });
 });
-// test
+// trigger
