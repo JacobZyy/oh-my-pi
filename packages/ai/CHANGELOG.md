@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Fixed Xiaomi MiMo `/login` validation sending `x-api-key` header instead of `Authorization: Bearer`, which caused 401 errors during API key validation. The runtime model discovery already used the correct header; only the login validation path had this inconsistency.
 - Fixed Anthropic stream idle-timeout retries after the provider stream has already begun.
 
 ## [15.7.3] - 2026-05-31

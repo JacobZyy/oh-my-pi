@@ -34,4 +34,35 @@ describe("xiaomi oauth validation", () => {
 		// And the AMS signal is not aborted (would be if the timeout signal were shared).
 		expect(capturedSignals[1]?.aborted).toBe(false);
 	});
+	it("sends Authorization Bearer header (not x-api-key) for sk- keys", async () => {
+		let capturedHeaders: Record<string, string> | undefined;
+		global.fetch = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+			capturedHeaders = init?.headers as Record<string, string> | undefined;
+			return new Response("{}", { status: 200, headers: { "Content-Type": "application/json" } });
+		}) as unknown as typeof fetch;
+		await loginXiaomi({
+			onPrompt: async () => "sk-test-key-12345",
+			onAuth: () => {},
+		});
+		expect(capturedHeaders).toBeDefined();
+		expect(capturedHeaders?.Authorization).toBe("Bearer sk-test-key-12345");
+		expect(capturedHeaders?.["x-api-key"]).toBeUndefined();
+	});
+
+	it("sends Authorization Bearer header for tp- keys", async () => {
+		const capturedHeaders: Record<string, string>[] = [];
+		global.fetch = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+			capturedHeaders.push(init?.headers as Record<string, string>);
+			return new Response("{}", { status: 200, headers: { "Content-Type": "application/json" } });
+		}) as unknown as typeof fetch;
+		await loginXiaomi({
+			onPrompt: async () => "tp-test-key-12345",
+			onAuth: () => {},
+		});
+		expect(capturedHeaders.length).toBeGreaterThanOrEqual(1);
+		for (const headers of capturedHeaders) {
+			expect(headers.Authorization).toBe("Bearer tp-test-key-12345");
+			expect(headers["x-api-key"]).toBeUndefined();
+		}
+	});
 });
